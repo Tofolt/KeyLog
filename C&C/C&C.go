@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -73,8 +72,9 @@ func WriteFileToRoot(r *http.Request, path string) {
 	}
 	io.WriteString(bornFile, string(ReceiveBody(r)))
 	defer bornFile.Close()
-	fmt.Println("File written successfully")
-	fmt.Println(filePath)
+	log.Println("DATA RECEIVED")
+	log.Println("FILE WRITTEN", "[", filePath, "]")
+
 }
 
 func CreateFilePath(path string) string {

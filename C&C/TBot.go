@@ -31,6 +31,8 @@ func BotInit(token string) {
 
 	if ChatIdFromCache() != 0 {
 		chatID = ChatIdFromCache()
+		log.Println("CHAT_ID ALREADY EXISTS")
+		log.Println("LISTENING FOR DATA")
 	}
 
 	for chatID == 0 {

