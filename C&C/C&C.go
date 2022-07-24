@@ -13,11 +13,10 @@ import (
 )
 
 func main() {
-
+	//TODO add man page output
 	var (
-		homeDir, _       = os.UserHomeDir()
-		defaultPath      = homeDir + "\\AppData\\Local\\Temp\\"
-		pathToStoreFlag  = flag.String("path", defaultPath, "Path to store log files. Default is TEMP in User Directory")
+		defaultPath      = ".\\"
+		pathToStoreFlag  = flag.String("path", defaultPath, "Path to store log files. Default is current directory")
 		portToListenFlag = flag.Int("port", 1337, "Listen Port")
 		tokenFlag        = flag.String("token", "", "Bot token to send files to Telegram")
 	)
@@ -28,17 +27,7 @@ func main() {
 		BotInit(*tokenFlag)
 	}
 
-	http.HandleFunc("/new", func(w http.ResponseWriter, r *http.Request) {
-		WriteFileToRoot(r, *pathToStoreFlag)
-		if *tokenFlag != "" {
-			TelegramBotSend(CreateFilePath(*pathToStoreFlag))
-		}
-
-	})
-	err := http.ListenAndServe(":"+strconv.Itoa(*portToListenFlag), nil)
-	if err != nil {
-		return
-	}
+	Listen(*tokenFlag, *pathToStoreFlag, *portToListenFlag)
 }
 
 func MakeConfigFile() {
@@ -81,4 +70,18 @@ func CreateFilePath(path string) string {
 	t := time.Now()
 	filePath := path + t.Format("2006-01-02 15-04") + ".txt"
 	return filePath
+}
+
+func Listen(tokenFlag string, pathToStoreFlag string, portToListenFlag int) {
+	http.HandleFunc("/new", func(w http.ResponseWriter, r *http.Request) {
+		WriteFileToRoot(r, pathToStoreFlag)
+		if tokenFlag != "" {
+			TelegramBotSend(CreateFilePath(pathToStoreFlag))
+		}
+
+	})
+	err := http.ListenAndServe(":"+strconv.Itoa(portToListenFlag), nil)
+	if err != nil {
+		return
+	}
 }

